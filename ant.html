@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ant's Accessible Area</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="800"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 10;
+    let selectedCell = null;
+
+    function calculateSum(n) {
+      let digitSum = 0;
+      while (n) {
+        digitSum += n % 10;
+        n = Math.floor(n / 10);
+      }
+      return digitSum;
+    }
+
+    function isAccessible(x, y) {
+      return calculateSum(x) + calculateSum(y) <= 25;
+    }
+
+    function drawGrid() {
+      ctx.beginPath();
+      ctx.strokeStyle = 'lightgray';
+      for (let x = 0; x <= canvas.width; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+      }
+      for (let y = 0; y <= canvas.height; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+      }
+      ctx.stroke();
+    }
+
+    function fillCell(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+    }
+
+    function countAccessibleCells(startX, startY) {
+      const queue = [{ x: startX, y: startY }];
+      const visited = new Set();
+      let count = 0;
+
+      while (queue.length > 0) {
+        const { x, y } = queue.shift();
+        const key = `${x},${y}`;
+        if (!visited.has(key) && isAccessible(x, y)) {
+          visited.add(key);
+          count++;
+
+          // Add neighboring cells to the queue
+          queue.push({ x, y: y + 1 }); // Up
+          queue.push({ x, y: y - 1 }); // Down
+          queue.push({ x: x - 1, y }); // Left
+          queue.push({ x: x + 1, y }); // Right
+        }
+      }
+
+      return count;
+    }
+
+    function drawAccessibleArea(startX, startY) {
+      const accessibleCells = countAccessibleCells(startX, startY);
+
+      for (let x = 0; x <= canvas.width / gridSize; x++) {
+        for (let y = 0; y <= canvas.height / gridSize; y++) {
+          if (isAccessible(startX + x, startY + y)) {
+            const cellX = startX + x;
+            const cellY = startY + y;
+            fillCell(x, y, 'lightblue');
+            addCellHoverEvent(x, y, cellX, cellY);
+          }
+        }
+      }
+
+      return accessibleCells;
+    }
+
+    function addCellHoverEvent(x, y, cellX, cellY) {
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const cellMouseX = Math.floor(mouseX / gridSize);
+        const cellMouseY = Math.floor(mouseY / gridSize);
+
+        if (cellMouseX === x && cellMouseY === y) {
+          if (!selectedCell) {
+            selectedCell = document.createElement('span');
+            selectedCell.style.position = 'absolute';
+            selectedCell.style.left = `${mouseX}px`;
+            selectedCell.style.top = `${mouseY}px`;
+            selectedCell.style.fontSize = '10px';
+            selectedCell.style.color = 'red';
+            selectedCell.style.pointerEvents = 'none';
+            canvas.parentNode.appendChild(selectedCell);
+          }
+          selectedCell.innerText = `(${cellX}, ${cellY})`;
+        }
+      });
+
+      canvas.addEventListener('mouseout', () => {
+        if (selectedCell) {
+          selectedCell.parentNode.removeChild(selectedCell);
+          selectedCell = null;
+        }
+      });
+    }
+
+    const startX = 1000;
+    const startY = 1000;
+    const accessibleCells = drawAccessibleArea(startX, startY);
+    drawGrid();
+    console.log(`The ant can visit ${accessibleCells} cells.`);
+  </script>
+</body>
+</html>
